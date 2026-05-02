@@ -1,0 +1,235 @@
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
+local hrp = char:WaitForChild("HumanoidRootPart")
+
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+local flying = false
+local mode = 1
+
+local modes = {
+	[1] = {name="GOD", speed=80},
+	[2] = {name="GALAXY", speed=140},
+	[3] = {name="UNIVERSE", speed=200},
+	[4] = {name="FINAL", speed=300}
+}
+
+local bv = Instance.new("BodyVelocity")
+bv.MaxForce = Vector3.new(1e9,1e9,1e9)
+
+local bg = Instance.new("BodyGyro")
+bg.MaxTorque = Vector3.new(1e9,1e9,1e9)
+
+local control = {f=0,b=0,l=0,r=0,u=0,d=0}
+
+-- 🌫️ SMOKE
+local smoke = Instance.new("ParticleEmitter")
+smoke.Texture = "rbxassetid://258128463"
+smoke.Rate = 0
+smoke.Speed = NumberRange.new(5)
+smoke.Lifetime = NumberRange.new(0.6)
+smoke.Parent = hrp
+
+-- ⚡ AURA
+local aura = Instance.new("ParticleEmitter")
+aura.Texture = "rbxassetid://243660364"
+aura.Rate = 0
+aura.Parent = hrp
+
+-- 🥷 SHADOW CLONE
+local function shadowClone()
+	local clone = char:Clone()
+	clone.Parent = workspace
+
+	for _,v in pairs(clone:GetDescendants()) do
+		if v:IsA("Script") or v:IsA("LocalScript") then
+			v:Destroy()
+		end
+	end
+
+	clone:PivotTo(hrp.CFrame)
+
+	for _,v in pairs(clone:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.Anchored = true
+			TweenService:Create(v,TweenInfo.new(0.4),{
+				Transparency = 1
+			}):Play()
+		end
+	end
+
+	Debris:AddItem(clone,0.5)
+end
+
+-- 💥 SMOKE BURST
+local function smokeBurst()
+	smoke:Emit(50)
+end
+
+-- 🥷 NINJA TP
+local function ninjaTP(pos)
+	if not pos then return end
+
+	shadowClone()
+	smokeBurst()
+
+	for _,v in pairs(char:GetDescendants()) do
+		if v:IsA("BasePart") then
+			TweenService:Create(v,TweenInfo.new(0.15),{
+				Transparency = 1
+			}):Play()
+		end
+	end
+
+	task.wait(0.15)
+
+	hrp.CFrame = CFrame.new(pos + Vector3.new(0,3,0))
+
+	for _,v in pairs(char:GetDescendants()) do
+		if v:IsA("BasePart") then
+			TweenService:Create(v,TweenInfo.new(0.2),{
+				Transparency = 0
+			}):Play()
+		end
+	end
+
+	smokeBurst()
+end
+
+-- ⚡ DASH TP (LOOK DIRECTION)
+local function dashTP()
+	local cam = workspace.CurrentCamera
+	local dir = cam.CFrame.LookVector * 50
+	ninjaTP(hrp.Position + dir)
+end
+
+-- 🌫️ AFTERIMAGE TRAIL
+local function afterImage()
+	local clone = char:Clone()
+	clone.Parent = workspace
+
+	for _,v in pairs(clone:GetDescendants()) do
+		if v:IsA("Script") or v:IsA("LocalScript") then
+			v:Destroy()
+		end
+	end
+
+	clone:PivotTo(hrp.CFrame)
+
+	for _,v in pairs(clone:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.Anchored = true
+			v.Transparency = 0.5
+			TweenService:Create(v,TweenInfo.new(0.3),{
+				Transparency = 1
+			}):Play()
+		end
+	end
+
+	Debris:AddItem(clone,0.4)
+end
+
+-- MODE EFFECT
+local function applyMode()
+	if mode == 1 then
+		aura.Rate = 50
+	elseif mode == 2 then
+		aura.Rate = 120
+	elseif mode == 3 then
+		aura.Rate = 200
+	elseif mode == 4 then
+		aura.Rate = 300
+	end
+end
+
+-- SAVE
+local saves = {nil,nil,nil}
+
+-- INPUT
+UIS.InputBegan:Connect(function(i,g)
+	if g then return end
+
+	if i.KeyCode == Enum.KeyCode.F then
+		flying = not flying
+		if flying then
+			bv.Parent = hrp
+			bg.Parent = hrp
+		else
+			bv.Parent = nil
+			bg.Parent = nil
+		end
+	end
+
+	if i.KeyCode == Enum.KeyCode.Q then
+		mode += 1
+		if mode > 4 then mode = 1 end
+		applyMode()
+	end
+
+	if i.KeyCode == Enum.KeyCode.R then
+		dashTP()
+	end
+
+	if i.KeyCode == Enum.KeyCode.One then saves[1] = hrp.Position end
+	if i.KeyCode == Enum.KeyCode.Two then saves[2] = hrp.Position end
+	if i.KeyCode == Enum.KeyCode.Three then saves[3] = hrp.Position end
+
+	if i.KeyCode == Enum.KeyCode.W then control.f = 1 end
+	if i.KeyCode == Enum.KeyCode.S then control.b = -1 end
+	if i.KeyCode == Enum.KeyCode.A then control.l = -1 end
+	if i.KeyCode == Enum.KeyCode.D then control.r = 1 end
+	if i.KeyCode == Enum.KeyCode.Space then control.u = 1 end
+	if i.KeyCode == Enum.KeyCode.LeftControl then control.d = -1 end
+end)
+
+UIS.InputEnded:Connect(function(i)
+	if i.KeyCode == Enum.KeyCode.W then control.f = 0 end
+	if i.KeyCode == Enum.KeyCode.S then control.b = 0 end
+	if i.KeyCode == Enum.KeyCode.A then control.l = 0 end
+	if i.KeyCode == Enum.KeyCode.D then control.r = 0 end
+	if i.KeyCode == Enum.KeyCode.Space then control.u = 0 end
+	if i.KeyCode == Enum.KeyCode.LeftControl then control.d = 0 end
+end)
+
+RunService.RenderStepped:Connect(function()
+	if flying then
+		local cam = workspace.CurrentCamera
+
+		local move =
+			cam.CFrame.LookVector * (control.f + control.b) +
+			cam.CFrame.RightVector * (control.l + control.r) +
+			Vector3.new(0,1,0) * (control.u + control.d)
+
+		bv.Velocity = move * modes[mode].speed
+
+		if mode >= 3 then
+			afterImage()
+		end
+	end
+end)
+
+-- GUI
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,220,0,180)
+frame.Position = UDim2.new(0,20,0.4,0)
+frame.BackgroundColor3 = Color3.fromRGB(20,0,40)
+
+local function button(txt,y,func)
+	local b = Instance.new("TextButton", frame)
+	b.Size = UDim2.new(1,-20,0,40)
+	b.Position = UDim2.new(0,10,0,y)
+	b.Text = txt
+	b.BackgroundColor3 = Color3.fromRGB(80,0,150)
+	b.TextColor3 = Color3.new(1,1,1)
+	b.MouseButton1Click:Connect(func)
+end
+
+button("TP 1",10,function() ninjaTP(saves[1]) end)
+button("TP 2",60,function() ninjaTP(saves[2]) end)
+button("TP 3",110,function() ninjaTP(saves[3]) end)
